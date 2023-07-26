@@ -1,7 +1,6 @@
-use crate::list;
 use crate::types::MalType;
+use crate::{hashmap, list, vector};
 use regex::Regex;
-use std::rc::Rc;
 
 type Token = String;
 
@@ -97,7 +96,12 @@ fn read_list(reader: &mut Reader, end: &str) -> Result<MalType, &'static str> {
     // skip closing brace
     reader.next()?;
 
-    Ok(list!(list))
+    match end {
+        ")" => Ok(list!(list)),
+        "]" => Ok(vector!(list)),
+        "}" => hashmap!(list),
+        _ => Err("Unknown end value"),
+    }
 }
 
 /// This function will look at the contents of the token and return the appropriate scalar (simple/single) data type value.
