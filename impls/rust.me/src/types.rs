@@ -3,6 +3,8 @@ use std::fmt;
 use std::ops::{Add, Div, Mul, Sub};
 use std::rc::Rc;
 
+use crate::errors::MalErr;
+
 #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub enum MalType {
     Nil,
@@ -66,10 +68,10 @@ impl Div for MalType {
 }
 
 impl MalType {
-    pub fn apply(&self, args: Vec<MalType>) -> Result<MalType, &'static str> {
+    pub fn apply(&self, args: Vec<MalType>) -> Result<MalType, MalErr> {
         match self {
             MalType::Function(f) => Ok(f(args)),
-            _ => Err("Cannot apply non-function"),
+            _ => Err(MalErr::Generic("Cannot apply non-function".to_string())),
         }
     }
 }
@@ -100,10 +102,12 @@ macro_rules! vector {
 macro_rules! hashmap {
     ( $l:expr ) => {{
         if $l.len() % 2 != 0 {
-            return Err("Odd number of arguments");
+            return Err(crate::errors::MalErr::Generic(
+                "Odd number of arguments".to_string(),
+            ));
         }
         let mut hm = std::collections::BTreeMap::new();
-        for w in $l.windows(2) {
+        for w in $l.chunks(2) {
             hm.insert(w[0].clone(), w[1].clone());
         }
         Ok(MalType::HashMap(

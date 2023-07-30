@@ -1,3 +1,4 @@
+use crate::errors::MalErr;
 use crate::types::MalType;
 use crate::{hashmap, list, vector};
 use regex::Regex;
@@ -19,25 +20,25 @@ impl Reader {
     }
 
     /// returns the token at the current position and increments the position
-    pub fn next(&mut self) -> Result<Token, &'static str> {
+    pub fn next(&mut self) -> Result<Token, MalErr> {
         let token = self.peek()?;
         self.position += 1;
         Ok(token)
     }
 
     /// just returns the token at the current position
-    pub fn peek(&self) -> Result<Token, &'static str> {
+    pub fn peek(&self) -> Result<Token, MalErr> {
         Ok(self
             .tokens
             .get(self.position)
-            .ok_or("Reader position out of bounds")?
+            .ok_or(MalErr::ReadErr("Reader position out of bounds".to_string()))?
             .to_string())
     }
 }
 
 /// This function will call tokenize and then create a new Reader object instance with the tokens.
 /// Then it will call read_form with the Reader instance.
-pub fn read_str(s: String) -> Result<MalType, &'static str> {
+pub fn read_str(s: String) -> Result<MalType, MalErr> {
     let mut reader = Reader::new(tokenize(s));
     read_form(&mut reader)
 }
@@ -60,14 +61,14 @@ fn tokenize(s: String) -> Vec<Token> {
 /// If the character is a left paren then read_list is called with the Reader object.
 /// Otherwise, read_atom is called with the Reader Object.
 /// The return value from read_form is a mal data type.
-fn read_form(reader: &mut Reader) -> Result<MalType, &'static str> {
+fn read_form(reader: &mut Reader) -> Result<MalType, MalErr> {
     match reader.peek()?.as_str() {
         "(" => read_list(reader, ")"),
-        ")" => return Err("Unexpected ')'"),
+        ")" => return Err(MalErr::ReadErr("Unexpected ')'".to_string())),
         "[" => read_list(reader, "]"),
-        "]" => return Err("Unexpected ']'"),
+        "]" => return Err(MalErr::ReadErr("Unexpected ']'".to_string())),
         "{" => read_list(reader, "}"),
-        "}" => return Err("Unexpected '}'"),
+        "}" => return Err(MalErr::ReadErr("Unexpected '}'".to_string())),
         _ => read_atom(reader),
     }
 }
@@ -75,7 +76,7 @@ fn read_form(reader: &mut Reader) -> Result<MalType, &'static str> {
 /// This function will repeatedly call read_form with the Reader object until it encounters a ')' token
 /// (if it reach EOF before reading a ')' then that is an error).
 /// It accumulates the results into a List type.
-fn read_list(reader: &mut Reader, end: &str) -> Result<MalType, &'static str> {
+fn read_list(reader: &mut Reader, end: &str) -> Result<MalType, MalErr> {
     let mut list: Vec<MalType> = vec![];
 
     // skip opening brace
@@ -84,7 +85,7 @@ fn read_list(reader: &mut Reader, end: &str) -> Result<MalType, &'static str> {
     loop {
         let token = match reader.peek() {
             Ok(t) => t,
-            _ => return Err("Unexpected EOF"),
+            _ => return Err(MalErr::ReadErr("Unexpected EOF".to_string())),
         };
         if token == end {
             break;
@@ -100,19 +101,19 @@ fn read_list(reader: &mut Reader, end: &str) -> Result<MalType, &'static str> {
         ")" => Ok(list!(list)),
         "]" => Ok(vector!(list)),
         "}" => hashmap!(list),
-        _ => Err("Unknown end value"),
+        _ => Err(MalErr::ReadErr("Unknown end value".to_string())),
     }
 }
 
 /// This function will look at the contents of the token and return the appropriate scalar (simple/single) data type value.
 /// Initially, you can just implement numbers (integers) and symbols.
-fn read_atom(reader: &mut Reader) -> Result<MalType, &'static str> {
+fn read_atom(reader: &mut Reader) -> Result<MalType, MalErr> {
     let token = reader.next()?;
     MalType::try_from(token)
 }
 
 impl TryFrom<Token> for MalType {
-    type Error = &'static str;
+    type Error = MalErr;
 
     fn try_from(token: Token) -> Result<Self, Self::Error> {
         match token.as_str() {
