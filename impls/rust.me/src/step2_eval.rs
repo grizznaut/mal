@@ -2,16 +2,18 @@ use std::collections::HashMap;
 
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
+mod errors;
+use crate::errors::MalErr;
 mod printer;
 mod reader;
 mod types;
 use types::MalType;
 
-fn read(s: String) -> Result<MalType, &'static str> {
+fn read(s: String) -> Result<MalType, MalErr> {
     reader::read_str(s)
 }
 
-fn eval(ast: MalType, repl_env: &ReplEnv) -> Result<MalType, &'static str> {
+fn eval(ast: MalType, repl_env: &ReplEnv) -> Result<MalType, MalErr> {
     match ast.clone() {
         MalType::List(l, _) => {
             if l.len() == 0 {
@@ -20,9 +22,9 @@ fn eval(ast: MalType, repl_env: &ReplEnv) -> Result<MalType, &'static str> {
             match eval_ast(&ast, &repl_env)? {
                 MalType::List(ref el, _) => match el.split_first() {
                     Some((f, args)) => f.apply(args.to_vec()),
-                    _ => Err("Something bad happened"),
+                    _ => Err(MalErr::Generic("Something bad happened".to_string())),
                 },
-                _ => Err("Expected a list"),
+                _ => Err(MalErr::Generic("Expected a list".to_string())),
             }
         }
         _ => eval_ast(&ast, repl_env),
@@ -33,7 +35,7 @@ fn print(ast: MalType) -> String {
     ast.pr_str()
 }
 
-fn rep(s: String, repl_env: &ReplEnv) -> Result<String, &'static str> {
+fn rep(s: String, repl_env: &ReplEnv) -> Result<String, MalErr> {
     let r = read(s)?;
     let e = eval(r, &repl_env)?;
     let p = print(e);
@@ -42,11 +44,11 @@ fn rep(s: String, repl_env: &ReplEnv) -> Result<String, &'static str> {
 
 type ReplEnv = HashMap<&'static str, fn(Vec<MalType>) -> MalType>;
 
-fn eval_ast(ast: &MalType, repl_env: &ReplEnv) -> Result<MalType, &'static str> {
+fn eval_ast(ast: &MalType, repl_env: &ReplEnv) -> Result<MalType, MalErr> {
     match ast {
         MalType::Symbol(s) => match repl_env.get(s.as_str()) {
             Some(f) => Ok(MalType::Function(*f)),
-            None => Err("Invalid symbol {e:}"),
+            None => Err(MalErr::SymbolNotFound("Invalid symbol {e:}".to_string())),
         },
         MalType::List(l, _) => {
             let mut results = Vec::new();

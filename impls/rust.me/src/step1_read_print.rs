@@ -1,11 +1,13 @@
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
+mod errors;
+use crate::errors::MalErr;
 mod printer;
 mod reader;
 mod types;
 use types::MalType;
 
-fn read(s: String) -> Result<MalType, &'static str> {
+fn read(s: String) -> Result<MalType, MalErr> {
     reader::read_str(s)
 }
 
@@ -17,7 +19,7 @@ fn print(mt: MalType) -> String {
     mt.pr_str()
 }
 
-fn rep(s: String) -> Result<String, &'static str> {
+fn rep(s: String) -> Result<String, MalErr> {
     let r = read(s)?;
     let e = eval(r);
     let p = print(e);
