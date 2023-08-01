@@ -84,7 +84,7 @@ impl MalType {
                 body,
                 env,
             } => {
-                let fn_env = Rc::new(Env::new(Some(env.clone())));
+                let fn_env = Rc::new(Env::new(Some(Rc::clone(&env))));
                 fn_env.bind((**params).clone(), args)?;
                 eval((**body).clone(), fn_env)
             }

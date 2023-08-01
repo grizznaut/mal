@@ -24,12 +24,12 @@ fn eval(ast: MalType, env: Rc<Env>) -> Result<MalType, MalErr> {
             }
             match l[0].to_string().as_str() {
                 "def!" => {
-                    let result = eval(l[2].clone(), env.clone())?;
+                    let result = eval(l[2].clone(), Rc::clone(&env))?;
                     env.set(l[1].to_string(), result.clone());
                     Ok(result)
                 }
                 "let*" => {
-                    let let_env = Rc::new(Env::new(Some(env.clone())));
+                    let let_env = Rc::new(Env::new(Some(Rc::clone(&env))));
                     match &l[1] {
                         MalType::List(binding_list, _) | MalType::Vector(binding_list, _) => {
                             if binding_list.len() % 2 != 0 {
@@ -38,7 +38,10 @@ fn eval(ast: MalType, env: Rc<Env>) -> Result<MalType, MalErr> {
                                 ));
                             }
                             for w in binding_list.chunks(2) {
-                                let_env.set(w[0].to_string(), eval(w[1].clone(), let_env.clone())?);
+                                let_env.set(
+                                    w[0].to_string(),
+                                    eval(w[1].clone(), Rc::clone(&let_env))?,
+                                );
                             }
                         }
                         _ => {
@@ -53,13 +56,13 @@ fn eval(ast: MalType, env: Rc<Env>) -> Result<MalType, MalErr> {
                     MalType::List(el, _) => Ok(el.last().unwrap_or(&MalType::Nil).clone()),
                     _ => Err(MalErr::InvalidDo("Invalid do construction".to_string())),
                 },
-                "if" => match eval(l[1].clone(), env.clone())? {
+                "if" => match eval(l[1].clone(), Rc::clone(&env))? {
                     MalType::Nil | MalType::Bool(false) => {
                         l.get(3).map_or(Ok(MalType::Nil), |else_branch| {
-                            eval(else_branch.clone(), env.clone())
+                            eval(else_branch.clone(), Rc::clone(&env))
                         })
                     }
-                    _ => eval(l[2].clone(), env.clone()),
+                    _ => eval(l[2].clone(), Rc::clone(&env)),
                 },
                 "fn*" => match &l[1..] {
                     [params @ (MalType::List(..) | MalType::Vector(..)), body] => {
@@ -93,7 +96,7 @@ fn print(ast: MalType) -> String {
 
 fn rep(s: &str, env: &Rc<Env>) -> Result<String, MalErr> {
     let r = read(s)?;
-    let e = eval(r, env.clone())?;
+    let e = eval(r, Rc::clone(&env))?;
     let p = print(e);
     Ok(p)
 }
@@ -104,14 +107,14 @@ fn eval_ast(ast: &MalType, env: &Rc<Env>) -> Result<MalType, MalErr> {
         MalType::List(l, _) => {
             let mut results = Vec::new();
             for ast in l.iter() {
-                results.push(eval(ast.clone(), env.clone())?);
+                results.push(eval(ast.clone(), Rc::clone(&env))?);
             }
             Ok(list!(results))
         }
         MalType::Vector(l, _) => {
             let mut results = Vec::new();
             for ast in l.iter() {
-                results.push(eval(ast.clone(), env.clone())?);
+                results.push(eval(ast.clone(), Rc::clone(&env))?);
             }
             Ok(vector!(results))
         }
@@ -119,7 +122,7 @@ fn eval_ast(ast: &MalType, env: &Rc<Env>) -> Result<MalType, MalErr> {
             let mut results = Vec::new();
             for (k, v) in hm.iter() {
                 results.push(k.clone());
-                results.push(eval(v.clone(), env.clone())?);
+                results.push(eval(v.clone(), Rc::clone(&env))?);
             }
             hashmap!(results)
         }

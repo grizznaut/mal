@@ -31,7 +31,7 @@ impl Env {
 
     /// takes a symbol key and if the current environment contains that key then return the environment.
     /// If no key is found and outer is not nil then call find (recurse) on the outer environment.
-    pub fn find(&self, symbol: &str) -> Option<Self> {
+    fn find(&self, symbol: &str) -> Option<Self> {
         if self.data.borrow().contains_key(symbol) {
             return Some(self.clone());
         } else {
