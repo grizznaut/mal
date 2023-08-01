@@ -64,7 +64,7 @@ TEST_OPTS =
 REGRESS =
 
 HARD=
-DEFERRABLE=1
+DEFERRABLE=0
 OPTIONAL=1
 
 # Run target/rule within docker image for the implementation

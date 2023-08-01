@@ -19,6 +19,10 @@ impl MalType {
                 "{",
                 "}",
             ),
+            MalType::MalFunction { .. } => "#<function>".to_string(),
+            // MalType::MalFunction { params, body, env } => {
+            //     format!("params {:?}, body: {:?}, env: {:?}", params, body, env)
+            // }
             _ => todo!(),
         }
     }

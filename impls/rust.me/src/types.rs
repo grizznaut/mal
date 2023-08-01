@@ -3,6 +3,7 @@ use std::fmt;
 use std::ops::{Add, Div, Mul, Sub};
 use std::rc::Rc;
 
+use crate::env::Env;
 use crate::errors::MalErr;
 
 #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
@@ -15,6 +16,12 @@ pub enum MalType {
     Vector(Rc<Vec<MalType>>, Rc<MalType>),
     HashMap(Rc<BTreeMap<MalType, MalType>>, Rc<MalType>),
     Function(fn(Vec<MalType>) -> MalType),
+    MalFunction {
+        eval: fn(ast: MalType, env: Rc<Env>) -> Result<MalType, MalErr>,
+        params: Rc<MalType>,
+        body: Rc<MalType>,
+        env: Rc<Env>,
+    },
 }
 
 impl fmt::Display for MalType {
@@ -71,6 +78,16 @@ impl MalType {
     pub fn apply(&self, args: Vec<MalType>) -> Result<MalType, MalErr> {
         match self {
             MalType::Function(f) => Ok(f(args)),
+            MalType::MalFunction {
+                eval,
+                params,
+                body,
+                env,
+            } => {
+                let fn_env = Rc::new(Env::new(Some(env.clone())));
+                fn_env.bind((**params).clone(), args)?;
+                eval((**body).clone(), fn_env)
+            }
             _ => Err(MalErr::Generic("Cannot apply non-function".to_string())),
         }
     }
