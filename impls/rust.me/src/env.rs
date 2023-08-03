@@ -1,4 +1,5 @@
 use crate::errors::MalErr;
+use crate::list;
 use crate::types::MalType;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -56,7 +57,15 @@ impl Env {
         match binds {
             MalType::List(b, _) | MalType::Vector(b, _) => {
                 for (i, bind) in b.iter().enumerate() {
-                    self.set(bind.to_string(), exprs[i].clone());
+                    match bind {
+                        MalType::Symbol(s) if s == "&" => {
+                            self.set(b[i + 1].to_string(), list!(exprs[i..].to_vec()));
+                            break;
+                        }
+                        _ => {
+                            self.set(bind.to_string(), exprs[i].clone());
+                        }
+                    }
                 }
                 Ok(self.clone())
             }

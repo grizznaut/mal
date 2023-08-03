@@ -91,7 +91,7 @@ fn eval(ast: MalType, env: Rc<Env>) -> Result<MalType, MalErr> {
 }
 
 fn print(ast: MalType) -> String {
-    ast.pr_str()
+    ast.pr_str(true)
 }
 
 fn rep(s: &str, env: &Rc<Env>) -> Result<String, MalErr> {
@@ -140,6 +140,8 @@ fn main() -> rustyline::Result<()> {
     for (symbol, value) in core::ns() {
         repl_env.set(symbol.to_string(), value);
     }
+
+    let _ = rep("(def! not (fn* (a) (if a false true)))", &repl_env);
 
     loop {
         let readline = rl.readline("user> ");

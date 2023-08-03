@@ -1,6 +1,8 @@
+use crate::core::KEYWORD_PREFIX;
 use crate::errors::MalErr;
 use crate::types::MalType;
 use crate::{hashmap, list, vector};
+use lazy_static::lazy_static;
 use regex::Regex;
 
 type Token = String;
@@ -43,17 +45,17 @@ pub fn read_str(s: String) -> Result<MalType, MalErr> {
     read_form(&mut reader)
 }
 
+lazy_static! {
+    static ref RE: Regex =
+        Regex::new(r#"[\s,]*(~@|[\[\]{}()'`~^@]|"(?:\\.|[^\\"])*"?|;.*|[^\s\[\]{}('"`,;)]*)"#)
+            .unwrap();
+}
 /// This function will take a single string and return an array/list of all the tokens (strings) in it.
-/// The following regular expression (PCRE) will match all mal tokens.
-/// [\s,]*(~@|[\[\]{}()'`~^@]|"(?:\\.|[^\\"])*"?|;.*|[^\s\[\]{}('"`,;)]*)
 fn tokenize(s: String) -> Vec<Token> {
-    let re = Regex::new(r#"[\s,]*(~@|[\[\]{}()'`~^@]|"(?:\\.|[^\\"])*"?|;.*|[^\s\[\]{}('"`,;)]*)"#)
-        .unwrap();
-    let tokens: Vec<String> = re
+    let tokens: Vec<String> = RE
         .captures_iter(&s.trim())
         .map(|caps| String::from(&caps[1]))
         .collect();
-    // dbg!(&tokens);
     tokens
 }
 
@@ -112,6 +114,10 @@ fn read_atom(reader: &mut Reader) -> Result<MalType, MalErr> {
     MalType::try_from(token)
 }
 
+lazy_static! {
+    static ref INT_RE: Regex = Regex::new(r"^-?[0-9]+$").unwrap();
+    static ref STR_RE: Regex = Regex::new(r#""(?:\\.|[^\\"])*""#).unwrap();
+}
 impl TryFrom<Token> for MalType {
     type Error = MalErr;
 
@@ -120,10 +126,35 @@ impl TryFrom<Token> for MalType {
             "nil" => Ok(MalType::Nil),
             "true" => Ok(MalType::Bool(true)),
             "false" => Ok(MalType::Bool(false)),
-            _ => match token.parse::<i64>() {
-                Ok(int) => Ok(MalType::Int(int)),
-                Err(_) => Ok(MalType::Symbol(token)),
-            },
+            _ => {
+                if INT_RE.is_match(&token) {
+                    Ok(MalType::Int(token.parse().unwrap()))
+                } else if STR_RE.is_match(&token) {
+                    Ok(MalType::Str(read_str_transform(&token)))
+                } else if token.starts_with('"') {
+                    Err(MalErr::ReadErr("Unbalanced string".to_string()))
+                } else if token.starts_with(':') {
+                    Ok(MalType::Str(format!("{}{}", KEYWORD_PREFIX, &token[1..])))
+                } else {
+                    Ok(MalType::Symbol(token))
+                }
+            }
         }
     }
+}
+
+lazy_static! {
+    static ref UNESCAPE_RE: Regex = Regex::new(r#"\\(.)"#).unwrap();
+}
+fn read_str_transform(s: &str) -> String {
+    // remove quotes
+    let t = &s[1..s.len() - 1];
+    // a backslash followed by a doublequote is translated into a plain doublequote character,
+    // a backslash followed by "n" is translated into a newline,
+    // and a backslash followed by another backslash is translated into a single backslash
+    UNESCAPE_RE
+        .replace_all(&t, |caps: &regex::Captures| {
+            format!("{}", if &caps[1] == "n" { "\n" } else { &caps[1] })
+        })
+        .to_string()
 }

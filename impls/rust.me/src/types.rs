@@ -6,11 +6,12 @@ use std::rc::Rc;
 use crate::env::Env;
 use crate::errors::MalErr;
 
-#[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Clone, Debug, Ord, PartialOrd)]
 pub enum MalType {
     Nil,
     Bool(bool),
     Int(i64),
+    Str(String),
     Symbol(String),
     List(Rc<Vec<MalType>>, Rc<MalType>),
     Vector(Rc<Vec<MalType>>, Rc<MalType>),
@@ -26,7 +27,28 @@ pub enum MalType {
 
 impl fmt::Display for MalType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.pr_str())
+        write!(f, "{}", self.pr_str(true))
+    }
+}
+
+// Implemented manually to handle list <> vector comparison
+impl Eq for MalType {}
+impl PartialEq for MalType {
+    fn eq(&self, other: &MalType) -> bool {
+        match (self, other) {
+            (MalType::Nil, MalType::Nil) => true,
+            (MalType::Bool(ref a), MalType::Bool(ref b)) => a == b,
+            (MalType::Int(ref a), MalType::Int(ref b)) => a == b,
+            (MalType::Str(ref a), MalType::Str(ref b)) => a == b,
+            (MalType::Symbol(ref a), MalType::Symbol(ref b)) => a == b,
+            (MalType::List(ref a, _), MalType::List(ref b, _))
+            | (MalType::Vector(ref a, _), MalType::Vector(ref b, _))
+            | (MalType::List(ref a, _), MalType::Vector(ref b, _))
+            | (MalType::Vector(ref a, _), MalType::List(ref b, _)) => a == b,
+            (MalType::HashMap(ref a, _), MalType::HashMap(ref b, _)) => a == b,
+            (MalType::MalFunction { .. }, MalType::MalFunction { .. }) => false,
+            _ => false,
+        }
     }
 }
 
