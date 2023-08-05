@@ -27,7 +27,11 @@ lazy_static = "1.4.0"
 # [[bin]]
 # name = "step3_env"
 # path = "src/step3_env.rs"
+# 
+# [[bin]]
+# name = "step4_if_fn_do"
+# path = "src/step4_if_fn_do.rs"
 
 [[bin]]
-name = "step4_if_fn_do"
-path = "src/step4_if_fn_do.rs"
+name = "step5_tco"
+path = "src/step5_tco.rs"

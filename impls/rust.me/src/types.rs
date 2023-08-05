@@ -20,7 +20,7 @@ pub enum MalType {
     MalFunction {
         eval: fn(ast: MalType, env: Rc<Env>) -> Result<MalType, MalErr>,
         params: Rc<MalType>,
-        body: Rc<MalType>,
+        ast: Rc<MalType>,
         env: Rc<Env>,
     },
 }
@@ -103,12 +103,12 @@ impl MalType {
             MalType::MalFunction {
                 eval,
                 params,
-                body,
+                ast,
                 env,
             } => {
                 let fn_env = Rc::new(Env::new(Some(Rc::clone(&env))));
                 fn_env.bind((**params).clone(), args)?;
-                eval((**body).clone(), fn_env)
+                eval((**ast).clone(), fn_env)
             }
             _ => Err(MalErr::Generic("Cannot apply non-function".to_string())),
         }
