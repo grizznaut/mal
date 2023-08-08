@@ -54,7 +54,13 @@ lazy_static! {
 fn tokenize(s: String) -> Vec<Token> {
     let tokens: Vec<String> = RE
         .captures_iter(&s.trim())
-        .map(|caps| String::from(&caps[1]))
+        .filter_map(|caps| {
+            if caps[1].starts_with(";") {
+                None
+            } else {
+                Some(String::from(&caps[1]))
+            }
+        })
         .collect();
     tokens
 }
@@ -71,6 +77,13 @@ fn read_form(reader: &mut Reader) -> Result<MalType, MalErr> {
         "]" => return Err(MalErr::ReadErr("Unexpected ']'".to_string())),
         "{" => read_list(reader, "}"),
         "}" => return Err(MalErr::ReadErr("Unexpected '}'".to_string())),
+        "@" => {
+            reader.next()?;
+            Ok(list!(
+                MalType::Symbol("deref".to_string()),
+                read_form(reader)?
+            ))
+        }
         _ => read_atom(reader),
     }
 }

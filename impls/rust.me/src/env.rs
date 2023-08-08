@@ -8,7 +8,7 @@ use std::rc::Rc;
 #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Env {
     data: RefCell<BTreeMap<String, MalType>>,
-    outer: Option<Rc<Env>>,
+    pub outer: Option<Rc<Env>>,
 }
 
 impl Default for Env {

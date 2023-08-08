@@ -34,8 +34,8 @@ impl MalType {
                 }
             }
             MalType::Symbol(s) => s.to_string(),
-            MalType::List(l, _) => pr_list(l.deref(), "(", ")", print_readably),
-            MalType::Vector(l, _) => pr_list(l.deref(), "[", "]", print_readably),
+            MalType::List(l, _) => pr_list(l.deref(), "(", ")", print_readably, " "),
+            MalType::Vector(l, _) => pr_list(l.deref(), "[", "]", print_readably, " "),
             MalType::HashMap(hm, _) => pr_list(
                 &hm.iter()
                     .flat_map(|(k, v)| vec![k.clone(), v.clone()])
@@ -43,14 +43,22 @@ impl MalType {
                 "{",
                 "}",
                 print_readably,
+                " ",
             ),
+            MalType::Function(f) => format!("#<fn {:?}>", f),
             MalType::MalFunction { .. } => "#<function>".to_string(),
-            _ => todo!(),
+            MalType::Atom(a) => format!("(atom {})", a.borrow().to_string()),
         }
     }
 }
 
-fn pr_list(seq: &Vec<MalType>, open: &str, close: &str, print_readably: bool) -> String {
-    let inner = seq.iter().map(|el| el.pr_str(print_readably)).join(" ");
+pub fn pr_list(
+    seq: &Vec<MalType>,
+    open: &str,
+    close: &str,
+    print_readably: bool,
+    join: &str,
+) -> String {
+    let inner = seq.iter().map(|el| el.pr_str(print_readably)).join(join);
     format!("{}{}{}", open, inner, close)
 }

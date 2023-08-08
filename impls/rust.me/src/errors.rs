@@ -7,6 +7,7 @@ pub enum MalErr {
     // eval
     InvalidLet(String),
     InvalidDo(String),
+    FunctionErr(String),
     MalFunctionErr(String),
     Generic(String),
 }
@@ -18,6 +19,7 @@ impl std::fmt::Display for MalErr {
             MalErr::SymbolNotFound(symbol) => write!(f, "{} not found", symbol),
             MalErr::InvalidLet(message) => write!(f, "Invalid let* construction: {}", message),
             MalErr::InvalidDo(message) => write!(f, "Invalid do construction: {}", message),
+            MalErr::FunctionErr(message) => write!(f, "Does not compute: {}", message),
             MalErr::MalFunctionErr(message) => write!(f, "Invalid fn* construction: {}", message),
             MalErr::Generic(message) => write!(f, "Error: {}", message),
         }

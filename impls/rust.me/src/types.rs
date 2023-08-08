@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::fmt;
 use std::ops::{Add, Div, Mul, Sub};
@@ -16,13 +17,14 @@ pub enum MalType {
     List(Rc<Vec<MalType>>, Rc<MalType>),
     Vector(Rc<Vec<MalType>>, Rc<MalType>),
     HashMap(Rc<BTreeMap<MalType, MalType>>, Rc<MalType>),
-    Function(fn(Vec<MalType>) -> MalType),
+    Function(fn(Vec<MalType>) -> Result<MalType, MalErr>),
     MalFunction {
         eval: fn(ast: MalType, env: Rc<Env>) -> Result<MalType, MalErr>,
         params: Rc<MalType>,
         ast: Rc<MalType>,
         env: Rc<Env>,
     },
+    Atom(Rc<RefCell<MalType>>),
 }
 
 impl fmt::Display for MalType {
@@ -99,7 +101,7 @@ impl Div for MalType {
 impl MalType {
     pub fn apply(&self, args: Vec<MalType>) -> Result<MalType, MalErr> {
         match self {
-            MalType::Function(f) => Ok(f(args)),
+            MalType::Function(f) => f(args),
             MalType::MalFunction {
                 eval,
                 params,
@@ -113,6 +115,10 @@ impl MalType {
             _ => Err(MalErr::Generic("Cannot apply non-function".to_string())),
         }
     }
+}
+
+pub fn atom(a: &MalType) -> MalType {
+    MalType::Atom(Rc::new(RefCell::new(a.clone())))
 }
 
 #[macro_export]
