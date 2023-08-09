@@ -36,6 +36,10 @@ lazy_static = "1.4.0"
 # name = "step5_tco"
 # path = "src/step5_tco.rs"
 #
+#[[bin]]
+#name = "step6_file"
+#path = "src/step6_file.rs"
+#
 [[bin]]
-name = "step6_file"
-path = "src/step6_file.rs"
+name = "step7_quote"
+path = "src/step7_quote.rs"

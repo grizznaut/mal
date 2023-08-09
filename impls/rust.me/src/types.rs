@@ -117,6 +117,10 @@ impl MalType {
     }
 }
 
+pub fn func(f: fn(Vec<MalType>) -> Result<MalType, MalErr>) -> MalType {
+    MalType::Function(f)
+}
+
 pub fn atom(a: &MalType) -> MalType {
     MalType::Atom(Rc::new(RefCell::new(a.clone())))
 }

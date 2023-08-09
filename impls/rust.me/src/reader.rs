@@ -84,6 +84,34 @@ fn read_form(reader: &mut Reader) -> Result<MalType, MalErr> {
                 read_form(reader)?
             ))
         }
+        "'" => {
+            reader.next()?;
+            Ok(list!(
+                MalType::Symbol("quote".to_string()),
+                read_form(reader)?
+            ))
+        }
+        "`" => {
+            reader.next()?;
+            Ok(list!(
+                MalType::Symbol("quasiquote".to_string()),
+                read_form(reader)?
+            ))
+        }
+        "~" => {
+            reader.next()?;
+            Ok(list!(
+                MalType::Symbol("unquote".to_string()),
+                read_form(reader)?
+            ))
+        }
+        "~@" => {
+            reader.next()?;
+            Ok(list!(
+                MalType::Symbol("splice-unquote".to_string()),
+                read_form(reader)?
+            ))
+        }
         _ => read_atom(reader),
     }
 }
