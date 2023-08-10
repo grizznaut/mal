@@ -23,6 +23,7 @@ pub enum MalType {
         params: Rc<MalType>,
         ast: Rc<MalType>,
         env: Rc<Env>,
+        is_macro: bool,
     },
     Atom(Rc<RefCell<MalType>>),
 }
@@ -107,6 +108,7 @@ impl MalType {
                 params,
                 ast,
                 env,
+                ..
             } => {
                 let fn_env = Rc::new(Env::new(Some(Rc::clone(&env))));
                 fn_env.bind((**params).clone(), args)?;

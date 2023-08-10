@@ -138,6 +138,34 @@ fn vec(args: Vec<MalType>) -> Result<MalType, MalErr> {
     }
 }
 
+fn nth(list: &MalType, index: &MalType) -> Result<MalType, MalErr> {
+    match (list, index) {
+        (MalType::List(l, _) | MalType::Vector(l, _), MalType::Int(i)) => {
+            match l.get(*i as usize) {
+                Some(el) => Ok(el.clone()),
+                None => Err(MalErr::FunctionErr("list index out of range".to_string())),
+            }
+        }
+        _ => Err(MalErr::FunctionErr("Expected a list and index".to_string())),
+    }
+}
+
+fn first(list: &MalType) -> Result<MalType, MalErr> {
+    match nth(list, &MalType::Int(0)) {
+        Ok(el) => Ok(el),
+        Err(_) => Ok(MalType::Nil),
+    }
+}
+
+fn rest(list: &MalType) -> Result<MalType, MalErr> {
+    match list {
+        MalType::List(l, _) | MalType::Vector(l, _) => {
+            Ok(list!(l.get(1..).unwrap_or_default().to_vec()))
+        }
+        _ => Ok(list!(vec![])),
+    }
+}
+
 pub fn ns() -> HashMap<&'static str, MalType> {
     let mut ns = HashMap::new();
     ns.insert("+", func(|a| accumulate(a, |x, y| x + y)));
@@ -176,5 +204,8 @@ pub fn ns() -> HashMap<&'static str, MalType> {
     ns.insert("cons", func(|a| cons(a)));
     ns.insert("concat", func(|a| concat(a)));
     ns.insert("vec", func(|a| vec(a)));
+    ns.insert("nth", func(|a| nth(&a[0], &a[1])));
+    ns.insert("first", func(|a| first(&a[0])));
+    ns.insert("rest", func(|a| rest(&a[0])));
     ns
 }
