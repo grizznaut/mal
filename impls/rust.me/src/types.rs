@@ -17,13 +17,14 @@ pub enum MalType {
     List(Rc<Vec<MalType>>, Rc<MalType>),
     Vector(Rc<Vec<MalType>>, Rc<MalType>),
     HashMap(Rc<BTreeMap<MalType, MalType>>, Rc<MalType>),
-    Function(fn(Vec<MalType>) -> Result<MalType, MalErr>),
+    Function(fn(Vec<MalType>) -> Result<MalType, MalErr>, Rc<MalType>),
     MalFunction {
         eval: fn(ast: MalType, env: Rc<Env>) -> Result<MalType, MalErr>,
         params: Rc<MalType>,
         ast: Rc<MalType>,
         env: Rc<Env>,
         is_macro: bool,
+        meta: Rc<MalType>,
     },
     Atom(Rc<RefCell<MalType>>),
 }
@@ -102,7 +103,7 @@ impl Div for MalType {
 impl MalType {
     pub fn apply(&self, args: Vec<MalType>) -> Result<MalType, MalErr> {
         match self {
-            MalType::Function(f) => f(args),
+            MalType::Function(f, _) => f(args),
             MalType::MalFunction {
                 eval,
                 params,
@@ -117,10 +118,35 @@ impl MalType {
             _ => Err(MalErr::Generic("Cannot apply non-function".to_string())),
         }
     }
+
+    pub fn get_meta(&self) -> Result<MalType, MalErr> {
+        match self {
+            MalType::List(_, meta)
+            | MalType::Vector(_, meta)
+            | MalType::HashMap(_, meta)
+            | MalType::Function(_, meta) => Ok((**meta).clone()),
+            MalType::MalFunction { meta, .. } => Ok((**meta).clone()),
+            _ => Err(MalErr::Generic("Cannot get metadata for type".to_string())),
+        }
+    }
+
+    pub fn set_meta(&mut self, new_meta: &MalType) -> Result<MalType, MalErr> {
+        match self {
+            MalType::List(_, ref mut meta)
+            | MalType::Vector(_, ref mut meta)
+            | MalType::HashMap(_, ref mut meta)
+            | MalType::Function(_, ref mut meta)
+            | MalType::MalFunction { ref mut meta, .. } => {
+                *meta = Rc::new((new_meta).clone());
+            }
+            _ => return Err(MalErr::Generic("Cannot get metadata for type".to_string())),
+        };
+        Ok(self.clone())
+    }
 }
 
 pub fn func(f: fn(Vec<MalType>) -> Result<MalType, MalErr>) -> MalType {
-    MalType::Function(f)
+    MalType::Function(f, std::rc::Rc::new(MalType::Nil))
 }
 
 pub fn atom(a: &MalType) -> MalType {

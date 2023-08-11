@@ -3,9 +3,15 @@ use crate::printer::pr_list;
 use crate::reader::read_str;
 use crate::types::{atom, func, MalType};
 use crate::{hashmap, list, vector};
+
+use lazy_static::lazy_static;
+use rustyline::error::ReadlineError;
+use rustyline::DefaultEditor;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
+use std::sync::Mutex;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub static KEYWORD_PREFIX: &'static str = "\u{29e}";
 
@@ -65,7 +71,12 @@ fn is_variant(value: &MalType, variant: &str) -> Result<MalType, MalErr> {
         (MalType::Bool(true), "true") => true,
         (MalType::Bool(false), "false") => true,
         (MalType::Symbol(..), "symbol") => true,
-        (MalType::Str(s), "keyword") if s.starts_with(KEYWORD_PREFIX) => true,
+        (MalType::Str(s), "string") => !s.starts_with(KEYWORD_PREFIX),
+        (MalType::Str(s), "keyword") => s.starts_with(KEYWORD_PREFIX),
+        (MalType::Int(..), "number") => true,
+        (MalType::MalFunction { is_macro, .. }, "macro") => *is_macro,
+        (MalType::MalFunction { is_macro, .. }, "function") => !*is_macro,
+        (MalType::Function(..), "function") => true,
         (MalType::Vector(..), "vector") => true,
         (MalType::List(..) | MalType::Vector(..), "sequential") => true,
         (MalType::HashMap(..), "hashmap") => true,
@@ -276,6 +287,66 @@ fn map(args: Vec<MalType>) -> Result<MalType, MalErr> {
     }
 }
 
+fn time() -> Result<MalType, MalErr> {
+    let now = SystemTime::now();
+    let since_epoch = now.duration_since(UNIX_EPOCH).expect("Time went backwards");
+    Ok(MalType::Int(since_epoch.as_millis() as i64))
+}
+
+lazy_static! {
+    static ref RL: Mutex<DefaultEditor> = Mutex::new(DefaultEditor::new().unwrap());
+}
+fn readline(prompt: &MalType) -> Result<MalType, MalErr> {
+    match prompt {
+        MalType::Str(p) => {
+            let readline = RL.lock().unwrap().readline(p);
+            match readline {
+                Ok(line) => Ok(MalType::Str(line)),
+                Err(ReadlineError::Eof) => Ok(MalType::Nil),
+                Err(e) => Err(MalErr::FunctionErr(format!(
+                    "readline error: {}",
+                    e.to_string()
+                ))),
+            }
+        }
+        _ => Err(MalErr::FunctionErr(
+            "readline prompt should be a string".to_string(),
+        )),
+    }
+}
+
+fn conj(args: Vec<MalType>) -> Result<MalType, MalErr> {
+    match &args[0] {
+        MalType::List(l, _) => {
+            let mut new_list = (**l).clone();
+            for a in &args[1..] {
+                new_list.insert(0, a.clone());
+            }
+            Ok(list!(new_list))
+        }
+        MalType::Vector(v, _) => {
+            let mut new_vec = (**v).clone();
+            new_vec.extend_from_slice(&args[1..]);
+            Ok(vector!(new_vec))
+        }
+        _ => Err(MalErr::FunctionErr("expected a list or vector".to_string())),
+    }
+}
+
+fn seq(value: &MalType) -> Result<MalType, MalErr> {
+    match value {
+        MalType::List(l, _) | MalType::Vector(l, _) if l.is_empty() => Ok(MalType::Nil),
+        MalType::List(l, _) | MalType::Vector(l, _) => Ok(list!(l.to_vec())),
+        MalType::Str(s) if s.is_empty() => Ok(MalType::Nil),
+        MalType::Str(s) => Ok(list!(s
+            .chars()
+            .map(|c| { MalType::Str(c.to_string()) })
+            .collect())),
+        MalType::Nil => Ok(MalType::Nil),
+        _ => Err(MalErr::FunctionErr("invalid value for seq".to_string())),
+    }
+}
+
 pub fn ns() -> HashMap<&'static str, MalType> {
     let mut ns = HashMap::new();
     ns.insert("+", func(|a| accumulate(a, |x, y| x + y)));
@@ -338,5 +409,15 @@ pub fn ns() -> HashMap<&'static str, MalType> {
     ns.insert("throw", func(|a| Err(MalErr::Throw(a[0].clone()))));
     ns.insert("apply", func(|a| apply(a)));
     ns.insert("map", func(|a| map(a)));
+    ns.insert("readline", func(|a| readline(&a[0])));
+    ns.insert("time-ms", func(|_| time()));
+    ns.insert("meta", func(|a| (&a[0]).get_meta()));
+    ns.insert("with-meta", func(|a| (a[0].clone()).set_meta(&a[1])));
+    ns.insert("number?", func(|a| is_variant(&a[0], "number")));
+    ns.insert("string?", func(|a| is_variant(&a[0], "string")));
+    ns.insert("fn?", func(|a| is_variant(&a[0], "function")));
+    ns.insert("macro?", func(|a| is_variant(&a[0], "macro")));
+    ns.insert("conj", func(|a| conj(a)));
+    ns.insert("seq", func(|a| seq(&a[0])));
     ns
 }

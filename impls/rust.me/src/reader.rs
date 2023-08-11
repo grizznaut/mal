@@ -112,6 +112,15 @@ fn read_form(reader: &mut Reader) -> Result<MalType, MalErr> {
                 read_form(reader)?
             ))
         }
+        "^" => {
+            reader.next()?;
+            let meta = read_form(reader)?;
+            Ok(list![
+                MalType::Symbol("with-meta".to_string()),
+                read_form(reader)?,
+                meta
+            ])
+        }
         _ => read_atom(reader),
     }
 }
@@ -173,7 +182,7 @@ impl TryFrom<Token> for MalType {
                 } else if STR_RE.is_match(&token) {
                     Ok(MalType::Str(read_str_transform(&token)))
                 } else if token.starts_with('"') {
-                    Err(MalErr::ReadErr("Unbalanced string".to_string()))
+                    Err(MalErr::ReadErr("unbalanced string".to_string()))
                 } else if token.starts_with(':') {
                     Ok(MalType::Str(format!("{}{}", KEYWORD_PREFIX, &token[1..])))
                 } else {

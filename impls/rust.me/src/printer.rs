@@ -45,7 +45,7 @@ impl MalType {
                 print_readably,
                 " ",
             ),
-            MalType::Function(f) => format!("#<fn {:?}>", f),
+            MalType::Function(f, _) => format!("#<fn {:?}>", f),
             MalType::MalFunction { .. } => "#<function>".to_string(),
             MalType::Atom(a) => format!("(atom {})", a.borrow().to_string()),
         }
